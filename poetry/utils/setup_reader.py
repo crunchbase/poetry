@@ -16,6 +16,24 @@ from typing import Union
 from ._compat import PY35
 from ._compat import basestring
 from ._compat import Path
+from unittest.mock import patch
+import importlib.machinery
+import sys
+import os
+
+
+class cd:
+    """Context manager for changing the current working directory"""
+    def __init__(self, new_path):
+        self.new_path = os.path.expanduser(new_path)
+        self.save_path = None
+
+    def __enter__(self):
+        self.save_path = os.getcwd()
+        os.chdir(self.new_path)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.save_path)
 
 
 class SetupReader(object):
@@ -84,14 +102,34 @@ class SetupReader(object):
         if not setup_call:
             return self.DEFAULT
 
-        # Inspecting keyword arguments
-        result["name"] = self._find_single_string(setup_call, body, "name")
-        result["version"] = self._find_single_string(setup_call, body, "version")
-        result["install_requires"] = self._find_install_requires(setup_call, body)
-        result["extras_require"] = self._find_extras_require(setup_call, body)
-        result["python_requires"] = self._find_single_string(
-            setup_call, body, "python_requires"
-        )
+        try:
+            with patch("setuptools.setup") as mock_setup:
+
+                loc, mod = str(filepath.parent), str(filepath.name).replace(".py", "")
+                sys.path.insert(0, loc)
+
+                with cd(loc):
+                    loader = importlib.machinery.SourceFileLoader("__main__", "setup.py")
+                    loader.load_module()
+                if mock_setup.call_count == 0:
+                    # force to go second route.
+                    raise ValueError()
+
+                call_kwargs = mock_setup.call_args[1]
+                result["name"] = call_kwargs["name"]
+                result["version"] = call_kwargs["version"]
+                result["install_requires"] = call_kwargs.get("install_requires", [])
+                result["extras_require"] = call_kwargs.get("extras_require")
+                result["python_requires"] = call_kwargs.get("python_requires")
+        except Exception:
+            # Inspecting keyword arguments
+            result["name"] = self._find_single_string(setup_call, body, "name")
+            result["version"] = self._find_single_string(setup_call, body, "version")
+            result["install_requires"] = self._find_install_requires(setup_call, body)
+            result["extras_require"] = self._find_extras_require(setup_call, body)
+            result["python_requires"] = self._find_single_string(
+                setup_call, body, "python_requires"
+            )
 
         return result
 
