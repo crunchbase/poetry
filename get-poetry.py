@@ -302,7 +302,8 @@ class Installer:
         preview=False,
         force=False,
         accept_all=False,
-        base_url=BASE_URL,
+        tar_location=None,
+        base_url=BASE_URL
     ):
         self._version = version
         self._preview = preview
@@ -310,6 +311,7 @@ class Installer:
         self._modify_path = True
         self._accept_all = accept_all
         self._base_url = base_url
+        self._tar_location = tar_location
 
     def allows_prereleases(self):
         return self._preview
@@ -476,7 +478,10 @@ class Installer:
             shutil.rmtree(POETRY_LIB)
 
         try:
-            self._make_lib(version)
+            if not self._tar_location:
+                self._make_lib(version)
+            else:
+                self._make_lib_from_tar()
         except Exception:
             if not os.path.exists(POETRY_LIB_BACKUP):
                 raise
@@ -488,6 +493,14 @@ class Installer:
         finally:
             if os.path.exists(POETRY_LIB_BACKUP):
                 shutil.rmtree(POETRY_LIB_BACKUP)
+
+    def _make_lib_from_tar(self):
+        gz = GzipFile(self._tar_location, mode="rb")
+        try:
+            with tarfile.TarFile(self._tar_location, fileobj=gz, format=tarfile.PAX_FORMAT) as f:
+                f.extractall(POETRY_LIB)
+        finally:
+            gz.close()
 
     def _make_lib(self, version):
         # We get the payload from the remote host
@@ -837,6 +850,9 @@ def main():
     parser.add_argument(
         "--uninstall", dest="uninstall", action="store_true", default=False
     )
+    parser.add_argument(
+        "--tar-location", dest="location", default=None
+    )
 
     args = parser.parse_args()
 
@@ -847,6 +863,7 @@ def main():
         accept_all=args.accept_all
         or string_to_bool(os.getenv("POETRY_ACCEPT", "0"))
         or not is_interactive(),
+        tar_location=args.location
     )
 
     if args.uninstall or string_to_bool(os.getenv("POETRY_UNINSTALL", "0")):
