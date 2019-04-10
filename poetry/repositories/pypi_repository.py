@@ -283,12 +283,13 @@ class PyPiRepository(Repository):
             raise PackageNotFound("Package [{}] not found.".format(name))
 
         info = json_data["info"]
+        original_required_dist = info["requires_dist"]
         data = {
             "name": info["name"],
             "version": info["version"],
             "summary": info["summary"],
             "platform": info["platform"],
-            "requires_dist": info["requires_dist"],
+            "requires_dist": None,
             "requires_python": info["requires_python"],
             "digests": [],
             "_cache_version": str(self.CACHE_VERSION),
@@ -302,31 +303,25 @@ class PyPiRepository(Repository):
         for file_info in version_info:
             data["digests"].append(file_info["digests"]["sha256"])
 
-        if self._fallback and data["requires_dist"] is None:
-            self._log("No dependencies found, downloading archives", level="debug")
-            # No dependencies set (along with other information)
-            # This might be due to actually no dependencies
-            # or badly set metadata when uploading
-            # So, we need to make sure there is actually no
-            # dependencies by introspecting packages
-            urls = defaultdict(list)
-            for url in json_data["urls"]:
-                # Only get sdist and wheels if they exist
-                dist_type = url["packagetype"]
-                if dist_type not in ["sdist", "bdist_wheel"]:
-                    continue
+        urls = defaultdict(list)
+        for url in json_data["urls"]:
+            # Only get sdist and wheels if they exist
+            dist_type = url["packagetype"]
+            if dist_type not in ["sdist", "bdist_wheel"]:
+                continue
 
-                urls[dist_type].append(url["url"])
+            urls[dist_type].append(url["url"])
 
-            if not urls:
-                return data
+        if not urls:
+            data["requires_dist"] = original_required_dist
+            return data
 
-            info = self._get_info_from_urls(urls)
+        info = self._get_info_from_urls(urls)
 
-            data["requires_dist"] = info["requires_dist"]
+        data["requires_dist"] = info["requires_dist"] or original_required_dist
 
-            if not data["requires_python"]:
-                data["requires_python"] = info["requires_python"]
+        if not data["requires_python"]:
+            data["requires_python"] = info["requires_python"]
 
         return data
 
@@ -363,13 +358,15 @@ class PyPiRepository(Repository):
                 plat = m.group("plat")
                 if abi == "none" and plat == "any":
                     # Universal wheel
-                    if pyver == "py2.py3":
+                    if pyver == "py2.py3" or ("cp2" in pyver and "cp3" in pyver):
                         # Any Python
                         universal_wheel = wheel
-                    elif pyver == "py2":
+                    elif pyver == "py2" or "cp2" in pyver:
                         universal_python2_wheel = wheel
-                    else:
+                    elif pyver == "py3" or "cp3" in pyver:
                         universal_python3_wheel = wheel
+                    else:
+                        continue
                 else:
                     platform_specific_wheels.append(wheel)
 
@@ -518,30 +515,6 @@ class PyPiRepository(Repository):
 
             unpacked = Path(temp_dir) / "unpacked"
             sdist_dir = unpacked / Path(filename).name.rstrip(suffix)
-
-            # Checking for .egg-info at root
-            eggs = list(sdist_dir.glob("*.egg-info"))
-            if eggs:
-                egg_info = eggs[0]
-
-                requires = egg_info / "requires.txt"
-                if requires.exists():
-                    with requires.open() as f:
-                        info["requires_dist"] = parse_requires(f.read())
-
-                        return info
-
-            # Searching for .egg-info in sub directories
-            eggs = list(sdist_dir.glob("**/*.egg-info"))
-            if eggs:
-                egg_info = eggs[0]
-
-                requires = egg_info / "requires.txt"
-                if requires.exists():
-                    with requires.open() as f:
-                        info["requires_dist"] = parse_requires(f.read())
-
-                        return info
 
             # Still nothing, try reading (without executing it)
             # the setup.py file.
