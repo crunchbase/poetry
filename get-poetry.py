@@ -205,6 +205,22 @@ if __name__ == "__main__":
     main()
 """
 
+BIN_DEPENDENCY = """#!/usr/bin/env python
+import glob
+import sys
+import os
+
+lib = os.path.normpath(os.path.join(os.path.realpath(__file__), "../..", "lib"))
+
+sys.path.insert(0, lib)
+
+if __name__ == "__main__":
+    from poetry.scripts.find_dependency import main
+
+    main()
+
+"""
+
 BAT = '@echo off\r\npython "{poetry_bin}" %*\r\n'
 
 
@@ -586,10 +602,15 @@ class Installer:
         with open(os.path.join(POETRY_BIN, "poetry"), "w") as f:
             f.write(BIN)
 
+        with open(os.path.join(POETRY_BIN, "poetry-dependency-resolver"), "w") as f:
+            f.write(BIN_DEPENDENCY)
+
         if not WINDOWS:
             # Making the file executable
             st = os.stat(os.path.join(POETRY_BIN, "poetry"))
             os.chmod(os.path.join(POETRY_BIN, "poetry"), st.st_mode | stat.S_IEXEC)
+            st = os.stat(os.path.join(POETRY_BIN, "poetry-dependency-resolver"))
+            os.chmod(os.path.join(POETRY_BIN, "poetry-dependency-resolver"), st.st_mode | stat.S_IEXEC)
 
     def make_env(self):
         if WINDOWS:

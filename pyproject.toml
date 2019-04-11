@@ -65,3 +65,4 @@ httpretty = "^0.9.6"
 
 [tool.poetry.scripts]
 poetry = "poetry.console:main"
+poetry-dependency-resolver = "poetry.script.find_dependency:main"
