@@ -104,23 +104,23 @@ class SetupReader(object):
 
         try:
             with patch("setuptools.setup") as mock_setup:
+                with patch("distutils.core.setup") as mock_dist_setup:
+                    loc, mod = str(filepath.parent), str(filepath.name).replace(".py", "")
+                    sys.path.insert(0, loc)
 
-                loc, mod = str(filepath.parent), str(filepath.name).replace(".py", "")
-                sys.path.insert(0, loc)
-
-                with cd(loc):
-                    loader = importlib.machinery.SourceFileLoader("__main__", "setup.py")
-                    loader.load_module()
-                if mock_setup.call_count == 0:
-                    # force to go second route.
-                    raise ValueError()
-
-                call_kwargs = mock_setup.call_args[1]
-                result["name"] = call_kwargs["name"]
-                result["version"] = call_kwargs["version"]
-                result["install_requires"] = call_kwargs.get("install_requires", [])
-                result["extras_require"] = call_kwargs.get("extras_require")
-                result["python_requires"] = call_kwargs.get("python_requires")
+                    with cd(loc):
+                        loader = importlib.machinery.SourceFileLoader("__main__", "setup.py")
+                        loader.load_module()
+                    if mock_setup.call_count == 0 and mock_dist_setup.call_count == 0:
+                        # force to go second route.
+                        raise ValueError()
+                    called_setup = mock_setup if mock_setup.call_count else mock_dist_setup
+                    call_kwargs = called_setup.call_args[1]
+                    result["name"] = call_kwargs["name"]
+                    result["version"] = call_kwargs["version"]
+                    result["install_requires"] = call_kwargs.get("install_requires", [])
+                    result["extras_require"] = call_kwargs.get("extras_require")
+                    result["python_requires"] = call_kwargs.get("python_requires")
         except Exception:
             # Inspecting keyword arguments
             result["name"] = self._find_single_string(setup_call, body, "name")
