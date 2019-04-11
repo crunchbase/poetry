@@ -418,8 +418,8 @@ class PyPiRepository(Repository):
                 return info
 
             if platform_specific_wheels and "sdist" not in urls:
-                # Pick the first wheel available and hope for the best
-                return self._get_info_from_wheel(platform_specific_wheels[0])
+                # Pick the first wheel available and hope for the best... i love later one more
+                return self._get_info_from_wheel(platform_specific_wheels[-1])
 
         return self._get_info_from_sdist(urls["sdist"][0])
 
