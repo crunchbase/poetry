@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-import pytest
 import shutil
 import zipfile
 
-from email.parser import Parser
+import pytest
 
-from poetry.io import NullIO
-from poetry.masonry.builders import WheelBuilder
-from poetry.poetry import Poetry
+from clikit.io import NullIO
+
+from poetry.factory import Factory
+from poetry.masonry.builders.wheel import WheelBuilder
+from poetry.masonry.publishing.uploader import Uploader
 from poetry.utils._compat import Path
-from poetry.utils._compat import to_str
 from poetry.utils.env import NullEnv
-from poetry.packages import ProjectPackage
 
 
 fixtures_dir = Path(__file__).parent / "fixtures"
@@ -34,7 +33,7 @@ def clear_samples_dist():
 
 def test_wheel_module():
     module_path = fixtures_dir / "module1"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
     whl = module_path / "dist" / "module1-0.1-py2.py3-none-any.whl"
 
@@ -46,7 +45,7 @@ def test_wheel_module():
 
 def test_wheel_package():
     module_path = fixtures_dir / "complete"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
     whl = module_path / "dist" / "my_package-1.2.3-py3-none-any.whl"
 
@@ -58,16 +57,67 @@ def test_wheel_package():
 
 def test_wheel_prerelease():
     module_path = fixtures_dir / "prerelease"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
     whl = module_path / "dist" / "prerelease-0.1b1-py2.py3-none-any.whl"
 
     assert whl.exists()
 
 
+def test_wheel_excluded_data():
+    module_path = fixtures_dir / "default_with_excluded_data_toml"
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
+
+    whl = module_path / "dist" / "my_package-1.2.3-py3-none-any.whl"
+
+    assert whl.exists()
+
+    with zipfile.ZipFile(str(whl)) as z:
+        assert "my_package/__init__.py" in z.namelist()
+        assert "my_package/data/sub_data/data2.txt" in z.namelist()
+        assert "my_package/data/sub_data/data3.txt" in z.namelist()
+        assert "my_package/data/data1.txt" not in z.namelist()
+
+
+def test_wheel_excluded_nested_data():
+    module_path = fixtures_dir / "exclude_nested_data_toml"
+    poetry = Factory().create_poetry(module_path)
+    WheelBuilder.make(poetry, NullEnv(), NullIO())
+
+    whl = module_path / "dist" / "my_package-1.2.3-py3-none-any.whl"
+
+    assert whl.exists()
+
+    with zipfile.ZipFile(str(whl)) as z:
+        assert "my_package/__init__.py" in z.namelist()
+        assert "my_package/data/sub_data/data2.txt" not in z.namelist()
+        assert "my_package/data/sub_data/data3.txt" not in z.namelist()
+        assert "my_package/data/data1.txt" not in z.namelist()
+        assert "my_package/puplic/publicdata.txt" in z.namelist()
+        assert "my_package/public/item1/itemdata1.txt" not in z.namelist()
+        assert "my_package/public/item1/subitem/subitemdata.txt" not in z.namelist()
+        assert "my_package/public/item2/itemdata2.txt" not in z.namelist()
+
+
+def test_wheel_localversionlabel():
+    module_path = fixtures_dir / "localversionlabel"
+    project = Factory().create_poetry(module_path)
+    WheelBuilder.make(project, NullEnv(), NullIO())
+    local_version_string = "localversionlabel-0.1b1+gitbranch.buildno.1"
+    whl = module_path / "dist" / (local_version_string + "-py2.py3-none-any.whl")
+
+    assert whl.exists()
+
+    with zipfile.ZipFile(str(whl)) as z:
+        assert local_version_string + ".dist-info/METADATA" in z.namelist()
+
+    uploader = Uploader(project, NullIO())
+    assert whl in uploader.files
+
+
 def test_wheel_package_src():
     module_path = fixtures_dir / "source_package"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
     whl = module_path / "dist" / "package_src-0.1-py2.py3-none-any.whl"
 
@@ -80,7 +130,7 @@ def test_wheel_package_src():
 
 def test_wheel_module_src():
     module_path = fixtures_dir / "source_file"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
     whl = module_path / "dist" / "module_src-0.1-py2.py3-none-any.whl"
 
@@ -90,41 +140,24 @@ def test_wheel_module_src():
         assert "module_src.py" in z.namelist()
 
 
-def test_package_with_include(mocker):
-    # Patch git module to return specific excluded files
-    p = mocker.patch("poetry.vcs.git.Git.get_ignored_files")
-    p.return_value = [
-        str(
-            Path(__file__).parent
-            / "fixtures"
-            / "with-include"
-            / "extra_dir"
-            / "vcs_excluded.txt"
-        ),
-        str(
-            Path(__file__).parent
-            / "fixtures"
-            / "with-include"
-            / "extra_dir"
-            / "sub_pkg"
-            / "vcs_excluded.txt"
-        ),
-    ]
-    module_path = fixtures_dir / "with-include"
-    WheelBuilder.make(Poetry.create(str(module_path)), NullEnv(), NullIO())
+def test_dist_info_file_permissions():
+    module_path = fixtures_dir / "complete"
+    WheelBuilder.make(Factory().create_poetry(module_path), NullEnv(), NullIO())
 
-    whl = module_path / "dist" / "with_include-1.2.3-py3-none-any.whl"
-
-    assert whl.exists()
+    whl = module_path / "dist" / "my_package-1.2.3-py3-none-any.whl"
 
     with zipfile.ZipFile(str(whl)) as z:
-        names = z.namelist()
-        assert len(names) == len(set(names))
-        assert "with_include-1.2.3.dist-info/LICENSE" in names
-        assert "extra_dir/__init__.py" in names
-        assert "extra_dir/vcs_excluded.txt" in names
-        assert "extra_dir/sub_pkg/__init__.py" in names
-        assert "extra_dir/sub_pkg/vcs_excluded.txt" not in names
-        assert "my_module.py" in names
-        assert "notes.txt" in names
-        assert "package_with_include/__init__.py" in names
+        assert (
+            z.getinfo("my_package-1.2.3.dist-info/WHEEL").external_attr == 0o644 << 16
+        )
+        assert (
+            z.getinfo("my_package-1.2.3.dist-info/METADATA").external_attr
+            == 0o644 << 16
+        )
+        assert (
+            z.getinfo("my_package-1.2.3.dist-info/RECORD").external_attr == 0o644 << 16
+        )
+        assert (
+            z.getinfo("my_package-1.2.3.dist-info/entry_points.txt").external_attr
+            == 0o644 << 16
+        )

@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 from poetry.version.markers import MarkerUnion
@@ -348,6 +349,46 @@ def test_marker_union_union_duplicates():
             'sys_platform == "darwin" or os_name == "Windows" or python_version <= "3.6"'
         )
     )
+    assert str(union) == (
+        'sys_platform == "darwin" or python_version <= "3.6" or os_name == "Windows"'
+    )
+
+
+def test_marker_union_all_any():
+    union = MarkerUnion(parse_marker(""), parse_marker(""))
+
+    assert union.is_any()
+
+
+def test_marker_union_not_all_any():
+    union = MarkerUnion(parse_marker(""), parse_marker(""), parse_marker("<empty>"))
+
+    assert union.is_any()
+
+
+def test_marker_union_all_empty():
+    union = MarkerUnion(parse_marker("<empty>"), parse_marker("<empty>"))
+
+    assert union.is_empty()
+
+
+def test_marker_union_not_all_empty():
+    union = MarkerUnion(
+        parse_marker("<empty>"), parse_marker("<empty>"), parse_marker("")
+    )
+
+    assert not union.is_empty()
+
+
+def test_marker_str_conversion_skips_empty_and_any():
+    union = MarkerUnion(
+        parse_marker("<empty>"),
+        parse_marker(
+            'sys_platform == "darwin" or python_version <= "3.6" or os_name == "Windows"'
+        ),
+        parse_marker(""),
+    )
+
     assert str(union) == (
         'sys_platform == "darwin" or python_version <= "3.6" or os_name == "Windows"'
     )

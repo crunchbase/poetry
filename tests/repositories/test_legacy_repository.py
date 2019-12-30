@@ -1,12 +1,9 @@
-import pytest
 import shutil
 
-try:
-    import urllib.parse as urlparse
-except ImportError:
-    import urlparse
+import pytest
 
 from poetry.packages import Dependency
+from poetry.repositories.auth import Auth
 from poetry.repositories.exceptions import PackageNotFound
 from poetry.repositories.legacy_repository import LegacyRepository
 from poetry.repositories.legacy_repository import Page
@@ -14,13 +11,19 @@ from poetry.utils._compat import PY35
 from poetry.utils._compat import Path
 
 
+try:
+    import urllib.parse as urlparse
+except ImportError:
+    import urlparse
+
+
 class MockRepository(LegacyRepository):
 
     FIXTURES = Path(__file__).parent / "fixtures" / "legacy"
 
-    def __init__(self):
+    def __init__(self, auth=None):
         super(MockRepository, self).__init__(
-            "legacy", url="http://foo.bar", disable_cache=True
+            "legacy", url="http://foo.bar", auth=auth, disable_cache=True
         )
 
     def _get(self, endpoint):
@@ -28,8 +31,10 @@ class MockRepository(LegacyRepository):
         name = parts[1]
 
         fixture = self.FIXTURES / (name + ".html")
+        if not fixture.exists():
+            return
 
-        with fixture.open() as f:
+        with fixture.open(encoding="utf-8") as f:
             return Page(self._url + endpoint, f.read(), {})
 
     def _download(self, url, dest):
@@ -205,3 +210,64 @@ def test_get_package_from_both_py2_and_py3_specific_wheels():
         package.requires[4].marker
     )
     assert 'sys_platform != "win32"' == str(package.requires[5].marker)
+
+
+def test_get_package_with_dist_and_universal_py3_wheel():
+    repo = MockRepository()
+
+    package = repo.package("ipython", "7.5.0")
+
+    assert "ipython" == package.name
+    assert "7.5.0" == package.version.text
+    assert ">=3.5" == package.python_versions
+
+    expected = [
+        Dependency("appnope", "*"),
+        Dependency("backcall", "*"),
+        Dependency("colorama", "*"),
+        Dependency("decorator", "*"),
+        Dependency("jedi", ">=0.10"),
+        Dependency("pexpect", "*"),
+        Dependency("pickleshare", "*"),
+        Dependency("prompt-toolkit", ">=2.0.0,<2.1.0"),
+        Dependency("pygments", "*"),
+        Dependency("setuptools", ">=18.5"),
+        Dependency("traitlets", ">=4.2"),
+        Dependency("typing", "*"),
+        Dependency("win-unicode-console", ">=0.5"),
+    ]
+    assert expected == sorted(package.requires, key=lambda dep: dep.name)
+
+
+def test_get_package_retrieves_non_sha256_hashes():
+    repo = MockRepository()
+
+    package = repo.package("ipython", "7.5.0")
+
+    expected = [
+        {
+            "file": "ipython-7.5.0-py3-none-any.whl",
+            "hash": "md5:dbdc53e3918f28fa335a173432402a00",
+        },
+        {
+            "file": "ipython-7.5.0.tar.gz",
+            "hash": "sha256:e840810029224b56cd0d9e7719dc3b39cf84d577f8ac686547c8ba7a06eeab26",
+        },
+    ]
+
+    assert expected == package.files
+
+
+def test_get_package_retrieves_packages_with_no_hashes():
+    repo = MockRepository()
+
+    package = repo.package("jupyter", "1.0.0")
+
+    assert [] == package.files
+
+
+def test_username_password_special_chars():
+    auth = Auth("http://foo.bar", "user:", "p@ssword")
+    repo = MockRepository(auth=auth)
+
+    assert "http://user%3A:p%40ssword@foo.bar" == repo.authenticated_url

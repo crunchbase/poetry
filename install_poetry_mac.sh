@@ -1,2 +1,2 @@
-python get-poetry.py --tar-location ./poetry-0.12.11-darwin.tar.gz
+python get-poetry.py --tar-location ./poetry-1.0.0-darwin.tar.gz
  

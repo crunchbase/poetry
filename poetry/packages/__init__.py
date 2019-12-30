@@ -1,6 +1,7 @@
 import os
 import re
 
+from poetry.semver import Version
 from poetry.version.requirements import Requirement
 
 from .dependency import Dependency
@@ -11,6 +12,7 @@ from .locker import Locker
 from .package import Package
 from .package_collection import PackageCollection
 from .project_package import ProjectPackage
+from .url_dependency import URLDependency
 from .utils.link import Link
 from .utils.utils import convert_markers
 from .utils.utils import group_markers
@@ -23,6 +25,8 @@ from .vcs_dependency import VCSDependency
 
 
 def dependency_from_pep_508(name):
+    from poetry.vcs.git import ParsedUrl
+
     # Removing comments
     parts = name.split("#", 1)
     name = parts[0].strip()
@@ -44,6 +48,8 @@ def dependency_from_pep_508(name):
 
     if is_url(name):
         link = Link(name)
+    elif req.url:
+        link = Link(req.url)
     else:
         p, extras = strip_extras(path)
         if os.path.isdir(p) and (os.path.sep in name or name.startswith(".")):
@@ -72,10 +78,15 @@ def dependency_from_pep_508(name):
             version = m.group("ver")
             dep = Dependency(name, version)
         else:
-            name = link.egg_fragment
+            name = req.name or link.egg_fragment
 
-            if link.scheme == "git":
+            if link.scheme.startswith("git+"):
+                url = ParsedUrl.parse(link.url)
+                dep = VCSDependency(name, "git", url.url, rev=url.rev)
+            elif link.scheme == "git":
                 dep = VCSDependency(name, "git", link.url_without_fragment)
+            elif link.scheme in ["http", "https"]:
+                dep = URLDependency(name, link.url_without_fragment)
             else:
                 dep = Dependency(name, "*")
     else:
@@ -105,6 +116,22 @@ def dependency_from_pep_508(name):
                     op = ""
                 elif op == "!=":
                     version += ".*"
+                elif op in ("<=", ">"):
+                    parsed_version = Version.parse(version)
+                    if parsed_version.precision == 1:
+                        if op == "<=":
+                            op = "<"
+                            version = parsed_version.next_major.text
+                        elif op == ">":
+                            op = ">="
+                            version = parsed_version.next_major.text
+                    elif parsed_version.precision == 2:
+                        if op == "<=":
+                            op = "<"
+                            version = parsed_version.next_minor.text
+                        elif op == ">":
+                            op = ">="
+                            version = parsed_version.next_minor.text
                 elif op in ("in", "not in"):
                     versions = []
                     for v in re.split("[ ,]+", version):

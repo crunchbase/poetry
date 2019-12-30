@@ -63,10 +63,7 @@ class Layout(object):
         self._license = license
         self._python = python
         self._dependencies = dependencies or {}
-        if dev_dependencies is None:
-            dev_dependencies = {"pytest": "^3.5"}
-
-        self._dev_dependencies = dev_dependencies
+        self._dev_dependencies = dev_dependencies or {}
 
         if not author:
             author = "Your Name <you@example.com>"
@@ -131,8 +128,6 @@ class Layout(object):
         readme_file.touch()
 
     def _create_tests(self, path):
-        self._dev_dependencies["pytest"] = "^3.0"
-
         tests = path / "tests"
         tests_init = tests / "__init__.py"
         tests_default = tests / "test_{}.py".format(self._package_name)
@@ -140,7 +135,7 @@ class Layout(object):
         tests.mkdir()
         tests_init.touch(exist_ok=False)
 
-        with tests_default.open("w") as f:
+        with tests_default.open("w", encoding="utf-8") as f:
             f.write(
                 TESTS_DEFAULT.format(
                     package_name=self._package_name, version=self._version
@@ -152,5 +147,5 @@ class Layout(object):
 
         poetry = path / "pyproject.toml"
 
-        with poetry.open("w") as f:
+        with poetry.open("w", encoding="utf-8") as f:
             f.write(content)

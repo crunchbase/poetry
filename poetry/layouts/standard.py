@@ -2,6 +2,7 @@
 
 from .layout import Layout
 
+
 DEFAULT = u"""__version__ = '{version}'
 """
 
@@ -14,5 +15,5 @@ class StandardLayout(Layout):
 
         package_path.mkdir()
 
-        with package_init.open("w") as f:
+        with package_init.open("w", encoding="utf-8") as f:
             f.write(DEFAULT.format(version=self._version))

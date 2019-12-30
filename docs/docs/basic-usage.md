@@ -69,7 +69,8 @@ It will automatically find a suitable version constraint **and install** the pac
 In our example, we are requesting the `pendulum` package with the version constraint `^1.4`.
 This means any version greater or equal to 1.4.0 and less than 2.0.0 (`>=1.4.0 <2.0.0`).
 
-Please read [versions](/docs/versions/) for more in-depth information on versions, how versions relate to each other, and on version constraints.
+Please read [Dependency specification](/docs/dependency-specification) for more in-depth information on versions,
+how versions relate to each other, and on the different ways you can specify dependencies.
 
 
 !!!note
@@ -147,27 +148,3 @@ and update the lock file with the new versions.
 
     Poetry will display a **Warning** when executing an install command if `poetry.lock` and `pyproject.toml`
     are not synchronized.
-
-
-## Poetry and virtualenvs
-
-When you execute the `install` command (or any other "install" commands like `add` or `remove`),
-Poetry will check if it's currently inside a virtualenv and, if not, will use an existing one
-or create a brand new one for you to always work isolated from your global Python installation.
-
-!!!note
-
-    To create the virtualenv for the current project, Poetry will use
-    the currently activated Python version.
-
-    To easily switch between Python versions, it is recommended to
-    use [pyenv](https://github.com/pyenv/pyenv) or similar tools.
-
-    For instance, if your project is Python 2.7 only, a standard workflow
-    would be:
-
-    ```bash
-    pyenv install 2.7.15
-    pyenv local 2.7.15  # Activate Python 2.7 for the current project
-    poetry install
-    ```

@@ -1,5 +1,142 @@
 # Change Log
 
+## [1.0.0] - 2019-12-12
+
+### Added
+
+- Added an `export` command to export the lock file to other formats (only `requirements.txt` is currently supported).
+- Added a `env info` command to get basic information about the current environment.
+- Added a `env use` command to control the Python version used by the project.
+- Added a `env list` command to list the virtualenvs associated with the current project.
+- Added a `env remove` command to delete virtualenvs associated with the current project.
+- Added support for `POETRY_HOME` declaration within `get-poetry.py`.
+- Added support for declaring a specific source for dependencies.
+- Added support for disabling PyPI and making another repository the default one.
+- Added support for declaring private repositories as secondary.
+- Added the ability to specify packages on a per-format basis.
+- Added support for custom urls in metadata.
+- Full environment markers are now supported for dependencies via the `markers` property.
+- Added the ability to specify git dependencies directly in `add`, it no longer requires the `--git` option.
+- Added the ability to specify path dependencies directly in `add`, it no longer requires the `--path` option.
+- Added support for url dependencies ([#1260](https://github.com/python-poetry/poetry/pull/1260)).
+- Publishing to PyPI using [API tokens](https://pypi.org/help/#apitoken) is now supported ([#1275](https://github.com/python-poetry/poetry/pull/1275)).
+- Licenses can now be identified by their full name.
+- Added support for custom certificate authority and client certificates for private repositories.
+- Poetry can now detect and use Conda environments.
+
+### Changed
+
+- Slightly changed the lock file, making it potentially incompatible with previous Poetry versions.
+- The `cache:clear` command has been renamed to `cache clear`.
+- The `debug:info` command has been renamed to `debug info`.
+- The `debug:resolve` command has been renamed to `debug resolve`.
+- The `self:update` command has been renamed to `self update`.
+- Changed the way virtualenvs are stored (names now depend on the project's path).
+- The `--git` option of the `add` command has been removed.
+- The `--path` option of the `add` command has been removed.
+- The `add` command will now automatically select the latest prerelease if only prereleases are available.
+- The `add` command can now update a dependencies if an explicit constraint is given ([#1221](https://github.com/python-poetry/poetry/pull/1221)).
+- Removed the `--develop` option from the `install` command.
+- Improved UX when searching for packages in the `init` command.
+- The `shell` command has been improved.
+- The `poetry run` command now uses `os.execvp()` rather than spawning a new subprocess.
+- Specifying dependencies with `allows-prereleases` in the `pyproject.toml` file is deprecated for consistency with the `add` command. Use `allow-prereleases` instead.
+- Improved the error message when the lock file is invalid.
+- Whenever Poetry needs to use the "system" Python, it will now call `sys.executable` instead of the `python` command.
+- Improved the error message displayed on conflicting Python requirements ([#1681](https://github.com/python-poetry/poetry/pull/1681)).
+- Improved the `site-packages` directory detection ([#1683](https://github.com/python-poetry/poetry/pull/1683)).
+
+### Fixed
+
+- Fixed transitive extra dependencies being removed when updating a specific dependency.
+- The `pyproject.toml` configuration is now properly validated.
+- Fixed installing Poetry-based packages breaking with `pip`.
+- Fixed packages with empty markers being added to the lock file.
+- Fixed invalid lock file generation in some cases.
+- Fixed local version identifier handling in wheel file names.
+- Fixed packages with invalid metadata triggering an error instead of being skipped.
+- Fixed the generation of invalid lock files in some cases.
+- Git dependencies are now properly locked to a specific revision when specifying a branch or a tag.
+- Fixed the behavior of the `~=` operator.
+- Fixed dependency resolution for conditional development dependencies.
+- Fixed generated dependency constraints when they contain inequality operators.
+- The `run` command now properly handles the `--` separator.
+- Fixed some issues with `path` dependencies being seen as `git` dependencies.
+- Fixed various issues with the way `extra` markers in dependencies were handled.
+- Fixed the option conflicts in the `run` command.
+- Fixed wrong latest version being displayed when executing `show -l`.
+- Fixed `TooManyRedirects` errors being raised when resolving dependencies.
+- Fixed custom indices dependencies being constantly updated.
+- Fixed the behavior of the `--install` option of the debug resolve command.
+- Fixed an error in `show` when using the `-o/--outdated` option.
+- Fixed PEP 508 url dependency handling.
+- Fixed excluded files via the `exclude` being included in distributions.
+- Fixed  an error in `env use` if the `virtualenvs.in-project` setting is activated ([#1682](https://github.com/python-poetry/poetry/pull/1682))
+- Fixed handling of `empty` and `any` markers in unions of markers ([#1650](https://github.com/python-poetry/poetry/pull/1650)).
+
+
+## [0.12.17] - 2019-07-03
+
+### Fixed
+
+- Fixed dependency resolution with circular dependencies.
+- Fixed encoding errors when reading files on Windows. (Thanks to [@vlcinsky](https://github.com/vlcinsky))
+- Fixed unclear errors when executing commands in virtual environments. (Thanks to [@Imaclean74](https://github.com/Imaclean74))
+- Fixed handling of `.venv` when it's not a directory. (Thanks to [@mpanarin](https://github.com/mpanarin))
+
+
+## [0.12.16] - 2019-05-17
+
+### Fixed
+
+- Fixed packages with no hashes retrieval for legacy repositories.
+- Fixed multiple constraints for dev dependencies.
+- Fixed dependency resolution failing on badly formed package versions instead of skipping.
+- Fixed permissions of built wheels.
+
+
+## [0.12.15] - 2019-05-03
+
+### Fixed
+
+- Fixed an `AttributeError` in the editable builder.
+- Fixed resolution of packages with only Python 3 wheels and sdist when resolving for legacy repositories.
+- Fixed non-sha256 hashes retrieval for legacy repositories.
+
+
+## [0.12.14] - 2019-04-26
+
+### Fixed
+
+- Fixed root package installation for pure Python packages.
+
+
+## [0.12.13] - 2019-04-26
+
+### Fixed
+
+- Fixed root package installation with `pip>=19.0`.
+- Fixed packages not being removed after using the `remove` command.
+
+
+## [0.12.12] - 2019-04-11
+
+### Fixed
+
+- Fix lock idempotency.
+- Fix markers evaluation for `python_version` with precision < 3.
+- Fix permissions of the `dist-info` files.
+- Fix `prepare_metadata_for_build_wheel()` missing in the build backend.
+- Fix metadata inconsistency between wheels and sdists.
+- Fix parsing of `platform_release` markers.
+- Fix metadata information when the project has git dependencies.
+- Fix error reporting when publishing fails.
+- Fix retrieval of `extras_require` in some `setup.py` files. (Thanks to [@asodeur](https://github.com/asodeur))
+- Fix wheel compression when building. (Thanks to [@ccosby](https://github.com/ccosby))
+- Improve retrieval of information for packages with two python specific wheels.
+- Fix request authentication when credentials are included in URLs. (Thanks to [@connorbrinton](https://github.com/connorbrinton))
+
+
 ## [0.12.11] - 2019-01-13
 
 ### Fixed
@@ -619,50 +756,57 @@ Initial release
 
 
 
-[Unreleased]: https://github.com/sdispater/poetry/compare/0.12.11...master
-[0.12.11]: https://github.com/sdispater/poetry/releases/tag/0.12.11
-[0.12.10]: https://github.com/sdispater/poetry/releases/tag/0.12.10
-[0.12.9]: https://github.com/sdispater/poetry/releases/tag/0.12.9
-[0.12.8]: https://github.com/sdispater/poetry/releases/tag/0.12.8
-[0.12.7]: https://github.com/sdispater/poetry/releases/tag/0.12.7
-[0.12.6]: https://github.com/sdispater/poetry/releases/tag/0.12.6
-[0.12.5]: https://github.com/sdispater/poetry/releases/tag/0.12.5
-[0.12.4]: https://github.com/sdispater/poetry/releases/tag/0.12.4
-[0.12.3]: https://github.com/sdispater/poetry/releases/tag/0.12.3
-[0.12.2]: https://github.com/sdispater/poetry/releases/tag/0.12.2
-[0.12.1]: https://github.com/sdispater/poetry/releases/tag/0.12.1
-[0.12.0]: https://github.com/sdispater/poetry/releases/tag/0.12.0
-[0.11.5]: https://github.com/sdispater/poetry/releases/tag/0.11.5
-[0.11.4]: https://github.com/sdispater/poetry/releases/tag/0.11.4
-[0.11.3]: https://github.com/sdispater/poetry/releases/tag/0.11.3
-[0.11.2]: https://github.com/sdispater/poetry/releases/tag/0.11.2
-[0.11.1]: https://github.com/sdispater/poetry/releases/tag/0.11.1
-[0.11.0]: https://github.com/sdispater/poetry/releases/tag/0.11.0
-[0.10.3]: https://github.com/sdispater/poetry/releases/tag/0.10.3
-[0.10.2]: https://github.com/sdispater/poetry/releases/tag/0.10.2
-[0.10.1]: https://github.com/sdispater/poetry/releases/tag/0.10.1
-[0.10.0]: https://github.com/sdispater/poetry/releases/tag/0.10.0
-[0.9.1]: https://github.com/sdispater/poetry/releases/tag/0.9.1
-[0.9.0]: https://github.com/sdispater/poetry/releases/tag/0.9.0
-[0.8.6]: https://github.com/sdispater/poetry/releases/tag/0.8.6
-[0.8.5]: https://github.com/sdispater/poetry/releases/tag/0.8.5
-[0.8.4]: https://github.com/sdispater/poetry/releases/tag/0.8.4
-[0.8.3]: https://github.com/sdispater/poetry/releases/tag/0.8.3
-[0.8.2]: https://github.com/sdispater/poetry/releases/tag/0.8.2
-[0.8.1]: https://github.com/sdispater/poetry/releases/tag/0.8.1
-[0.8.0]: https://github.com/sdispater/poetry/releases/tag/0.8.0
-[0.7.1]: https://github.com/sdispater/poetry/releases/tag/0.7.1
-[0.7.0]: https://github.com/sdispater/poetry/releases/tag/0.7.0
-[0.6.5]: https://github.com/sdispater/poetry/releases/tag/0.6.5
-[0.6.4]: https://github.com/sdispater/poetry/releases/tag/0.6.4
-[0.6.3]: https://github.com/sdispater/poetry/releases/tag/0.6.3
-[0.6.2]: https://github.com/sdispater/poetry/releases/tag/0.6.2
-[0.6.1]: https://github.com/sdispater/poetry/releases/tag/0.6.1
-[0.6.0]: https://github.com/sdispater/poetry/releases/tag/0.6.0
-[0.5.0]: https://github.com/sdispater/poetry/releases/tag/0.5.0
-[0.4.2]: https://github.com/sdispater/poetry/releases/tag/0.4.2
-[0.4.1]: https://github.com/sdispater/poetry/releases/tag/0.4.1
-[0.4.0]: https://github.com/sdispater/poetry/releases/tag/0.4.0
-[0.3.0]: https://github.com/sdispater/poetry/releases/tag/0.3.0
-[0.2.0]: https://github.com/sdispater/poetry/releases/tag/0.2.0
-[0.1.0]: https://github.com/sdispater/poetry/releases/tag/0.1.0
+[Unreleased]: https://github.com/python-poetry/poetry/compare/1.0.0...master
+[1.0.0]: https://github.com/python-poetry/poetry/releases/tag/1.0.0
+[0.12.17]: https://github.com/python-poetry/poetry/releases/tag/0.12.17
+[0.12.16]: https://github.com/python-poetry/poetry/releases/tag/0.12.16
+[0.12.15]: https://github.com/python-poetry/poetry/releases/tag/0.12.15
+[0.12.14]: https://github.com/python-poetry/poetry/releases/tag/0.12.14
+[0.12.13]: https://github.com/python-poetry/poetry/releases/tag/0.12.13
+[0.12.12]: https://github.com/python-poetry/poetry/releases/tag/0.12.12
+[0.12.11]: https://github.com/python-poetry/poetry/releases/tag/0.12.11
+[0.12.10]: https://github.com/python-poetry/poetry/releases/tag/0.12.10
+[0.12.9]: https://github.com/python-poetry/poetry/releases/tag/0.12.9
+[0.12.8]: https://github.com/python-poetry/poetry/releases/tag/0.12.8
+[0.12.7]: https://github.com/python-poetry/poetry/releases/tag/0.12.7
+[0.12.6]: https://github.com/python-poetry/poetry/releases/tag/0.12.6
+[0.12.5]: https://github.com/python-poetry/poetry/releases/tag/0.12.5
+[0.12.4]: https://github.com/python-poetry/poetry/releases/tag/0.12.4
+[0.12.3]: https://github.com/python-poetry/poetry/releases/tag/0.12.3
+[0.12.2]: https://github.com/python-poetry/poetry/releases/tag/0.12.2
+[0.12.1]: https://github.com/python-poetry/poetry/releases/tag/0.12.1
+[0.12.0]: https://github.com/python-poetry/poetry/releases/tag/0.12.0
+[0.11.5]: https://github.com/python-poetry/poetry/releases/tag/0.11.5
+[0.11.4]: https://github.com/python-poetry/poetry/releases/tag/0.11.4
+[0.11.3]: https://github.com/python-poetry/poetry/releases/tag/0.11.3
+[0.11.2]: https://github.com/python-poetry/poetry/releases/tag/0.11.2
+[0.11.1]: https://github.com/python-poetry/poetry/releases/tag/0.11.1
+[0.11.0]: https://github.com/python-poetry/poetry/releases/tag/0.11.0
+[0.10.3]: https://github.com/python-poetry/poetry/releases/tag/0.10.3
+[0.10.2]: https://github.com/python-poetry/poetry/releases/tag/0.10.2
+[0.10.1]: https://github.com/python-poetry/poetry/releases/tag/0.10.1
+[0.10.0]: https://github.com/python-poetry/poetry/releases/tag/0.10.0
+[0.9.1]: https://github.com/python-poetry/poetry/releases/tag/0.9.1
+[0.9.0]: https://github.com/python-poetry/poetry/releases/tag/0.9.0
+[0.8.6]: https://github.com/python-poetry/poetry/releases/tag/0.8.6
+[0.8.5]: https://github.com/python-poetry/poetry/releases/tag/0.8.5
+[0.8.4]: https://github.com/python-poetry/poetry/releases/tag/0.8.4
+[0.8.3]: https://github.com/python-poetry/poetry/releases/tag/0.8.3
+[0.8.2]: https://github.com/python-poetry/poetry/releases/tag/0.8.2
+[0.8.1]: https://github.com/python-poetry/poetry/releases/tag/0.8.1
+[0.8.0]: https://github.com/python-poetry/poetry/releases/tag/0.8.0
+[0.7.1]: https://github.com/python-poetry/poetry/releases/tag/0.7.1
+[0.7.0]: https://github.com/python-poetry/poetry/releases/tag/0.7.0
+[0.6.5]: https://github.com/python-poetry/poetry/releases/tag/0.6.5
+[0.6.4]: https://github.com/python-poetry/poetry/releases/tag/0.6.4
+[0.6.3]: https://github.com/python-poetry/poetry/releases/tag/0.6.3
+[0.6.2]: https://github.com/python-poetry/poetry/releases/tag/0.6.2
+[0.6.1]: https://github.com/python-poetry/poetry/releases/tag/0.6.1
+[0.6.0]: https://github.com/python-poetry/poetry/releases/tag/0.6.0
+[0.5.0]: https://github.com/python-poetry/poetry/releases/tag/0.5.0
+[0.4.2]: https://github.com/python-poetry/poetry/releases/tag/0.4.2
+[0.4.1]: https://github.com/python-poetry/poetry/releases/tag/0.4.1
+[0.4.0]: https://github.com/python-poetry/poetry/releases/tag/0.4.0
+[0.3.0]: https://github.com/python-poetry/poetry/releases/tag/0.3.0
+[0.2.0]: https://github.com/python-poetry/poetry/releases/tag/0.2.0
+[0.1.0]: https://github.com/python-poetry/poetry/releases/tag/0.1.0

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import re
 import shutil
 import tempfile
@@ -9,8 +8,9 @@ from contextlib import contextmanager
 from typing import Set
 from typing import Union
 
+from clikit.api.io.flags import VERY_VERBOSE
+
 from poetry.utils._compat import Path
-from poetry.utils._compat import basestring
 from poetry.utils._compat import glob
 from poetry.utils._compat import lru_cache
 from poetry.utils._compat import to_str
@@ -32,19 +32,39 @@ Summary: {summary}
 
 
 class Builder(object):
-
     AVAILABLE_PYTHONS = {"2", "2.7", "3", "3.4", "3.5", "3.6", "3.7"}
 
-    def __init__(self, poetry, env, io):
+    format = None
+
+    def __init__(
+        self, poetry, env, io, ignore_packages_formats=False
+    ):  # type: ("Poetry", "Env", "IO", bool) -> None
         self._poetry = poetry
         self._env = env
         self._io = io
         self._package = poetry.package
         self._path = poetry.file.parent
+
+        packages = []
+        for p in self._package.packages:
+            formats = p.get("format", [])
+            if not isinstance(formats, list):
+                formats = [formats]
+
+            if (
+                formats
+                and self.format
+                and self.format not in formats
+                and not ignore_packages_formats
+            ):
+                continue
+
+            packages.append(p)
+
         self._module = Module(
             self._package.name,
             self._path.as_posix(),
-            packages=self._package.packages,
+            packages=packages,
             includes=self._package.include,
         )
         self._meta = Metadata.from_package(self._package)
@@ -63,8 +83,9 @@ class Builder(object):
 
         explicitely_excluded = set()
         for excluded_glob in self._package.exclude:
+
             for excluded in glob(
-                os.path.join(self._path.as_posix(), str(excluded_glob)), recursive=True
+                Path(self._path, excluded_glob).as_posix(), recursive=True
             ):
                 explicitely_excluded.add(
                     Path(excluded).relative_to(self._path).as_posix()
@@ -81,10 +102,18 @@ class Builder(object):
         return result
 
     def is_excluded(self, filepath):  # type: (Union[str, Path]) -> bool
-        if not isinstance(filepath, basestring):
-            filepath = filepath.as_posix()
+        exclude_path = Path(filepath)
 
-        return filepath in self.find_excluded_files()
+        while True:
+            if exclude_path.as_posix() in self.find_excluded_files():
+                return True
+
+            if len(exclude_path.parts) > 1:
+                exclude_path = exclude_path.parent
+            else:
+                break
+
+        return False
 
     def find_files_to_add(self, exclude_build=True):  # type: (bool) -> list
         """
@@ -112,26 +141,24 @@ class Builder(object):
                     # Skip duplicates
                     continue
 
-                self._io.writeln(
-                    " - Adding: <comment>{}</comment>".format(str(file)),
-                    verbosity=self._io.VERBOSITY_VERY_VERBOSE,
+                self._io.write_line(
+                    " - Adding: <comment>{}</comment>".format(str(file)), VERY_VERBOSE
                 )
                 to_add.append(file)
 
         # Include project files
-        self._io.writeln(
-            " - Adding: <comment>pyproject.toml</comment>",
-            verbosity=self._io.VERBOSITY_VERY_VERBOSE,
+        self._io.write_line(
+            " - Adding: <comment>pyproject.toml</comment>", VERY_VERBOSE
         )
         to_add.append(Path("pyproject.toml"))
 
         # If a license file exists, add it
         for license_file in self._path.glob("LICENSE*"):
-            self._io.writeln(
+            self._io.write_line(
                 " - Adding: <comment>{}</comment>".format(
                     license_file.relative_to(self._path)
                 ),
-                verbosity=self._io.VERBOSITY_VERY_VERBOSE,
+                VERY_VERBOSE,
             )
             to_add.append(license_file.relative_to(self._path))
 
@@ -140,11 +167,11 @@ class Builder(object):
         if "readme" in self._poetry.local_config:
             readme = self._path / self._poetry.local_config["readme"]
             if readme.exists():
-                self._io.writeln(
+                self._io.write_line(
                     " - Adding: <comment>{}</comment>".format(
                         readme.relative_to(self._path)
                     ),
-                    verbosity=self._io.VERBOSITY_VERY_VERBOSE,
+                    VERY_VERBOSE,
                 )
                 to_add.append(readme.relative_to(self._path))
 
@@ -177,6 +204,14 @@ class Builder(object):
 
         if self._meta.author_email:
             content += "Author-email: {}\n".format(to_str(self._meta.author_email))
+
+        if self._meta.maintainer:
+            content += "Maintainer: {}\n".format(to_str(self._meta.maintainer))
+
+        if self._meta.maintainer_email:
+            content += "Maintainer-email: {}\n".format(
+                to_str(self._meta.maintainer_email)
+            )
 
         if self._meta.requires_python:
             content += "Requires-Python: {}\n".format(self._meta.requires_python)
@@ -227,7 +262,7 @@ class Builder(object):
         return dict(result)
 
     @classmethod
-    def convert_author(cls, author):  # type: () -> dict
+    def convert_author(cls, author):  # type: (...) -> dict
         m = AUTHOR_REGEX.match(author)
 
         name = m.group("name")
