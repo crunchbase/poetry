@@ -109,13 +109,13 @@ class SetupReader(object):
         body = ast.parse(content).body
 
         setup_call, body = self._find_setup_call(body)
-        if not setup_call:
-            return self.DEFAULT
 
         try:
             result = subprocess_dependency_resolver(str(filepath))
         except Exception:
             # Inspecting keyword arguments
+            if not setup_call:
+                return self.DEFAULT
             result["name"] = self._find_single_string(setup_call, body, "name")
             result["version"] = self._find_single_string(setup_call, body, "version")
             result["install_requires"] = self._find_install_requires(setup_call, body)
