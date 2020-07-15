@@ -1,3 +1,12 @@
+# Crunchbase: Poetry Installation Instructions
+
+To install poetry, run one the following scripts depending on your system:
+```
+./install_poetry.sh      # or
+./install_poetry_mac.sh
+```
+Below is included the original README from upstream.
+
 # Poetry: Dependency Management for Python
 
 Poetry helps you declare, manage and install dependencies of Python projects,
